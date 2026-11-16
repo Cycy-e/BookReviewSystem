@@ -4,7 +4,7 @@ using BookReviewSystem.Models;
 namespace BookReviewSystem.Views;
 
 /// <summary>Add a new book, or edit an existing one (administrators only).</summary>
-public class BookEditForm : Form
+public class BookEditForm : BaseForm
 {
     private readonly BookController _books = new();
     private readonly Book _existing;

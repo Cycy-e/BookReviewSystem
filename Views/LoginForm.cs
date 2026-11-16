@@ -3,7 +3,7 @@ using BookReviewSystem.Data;
 
 namespace BookReviewSystem.Views;
 
-public class LoginForm : Form
+public class LoginForm : BaseForm
 {
     private readonly AuthController _auth = new();
     private readonly TextBox _email = new() { Left = 120, Top = 90, Width = 230 };
@@ -19,7 +19,7 @@ public class LoginForm : Form
 
         var title = new Label
         {
-            Text = "Book Review & Management",
+            Text = "Book Review and Management",
             Font = new Font(Font.FontFamily, 14, FontStyle.Bold),
             Left = 20, Top = 20, Width = 350, Height = 30
         };

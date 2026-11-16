@@ -4,7 +4,7 @@ using BookReviewSystem.Models;
 namespace BookReviewSystem.Views;
 
 /// <summary>Catalogue window: search, filter, sort, and (for admins) manage books.</summary>
-public class MainForm : Form
+public class MainForm : BaseForm
 {
     private const string AllCategories = "All categories";
 

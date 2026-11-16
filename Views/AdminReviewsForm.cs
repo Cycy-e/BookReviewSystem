@@ -4,7 +4,7 @@ using BookReviewSystem.Models;
 namespace BookReviewSystem.Views;
 
 /// <summary>Administrators see every review and remove inappropriate ones (FR-15).</summary>
-public class AdminReviewsForm : Form
+public class AdminReviewsForm : BaseForm
 {
     private readonly ReviewController _reviews = new();
     private readonly DataGridView _grid = new() { Dock = DockStyle.Fill };

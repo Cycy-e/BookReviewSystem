@@ -4,7 +4,7 @@ using BookReviewSystem.Models;
 namespace BookReviewSystem.Views;
 
 /// <summary>Administrators view all users and deactivate or reactivate accounts (FR-16).</summary>
-public class AdminUsersForm : Form
+public class AdminUsersForm : BaseForm
 {
     private readonly AdminController _admin = new();
     private readonly DataGridView _grid = new() { Dock = DockStyle.Fill };

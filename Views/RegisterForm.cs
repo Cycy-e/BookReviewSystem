@@ -2,7 +2,7 @@ using BookReviewSystem.Controllers;
 
 namespace BookReviewSystem.Views;
 
-public class RegisterForm : Form
+public class RegisterForm : BaseForm
 {
     private readonly AuthController _auth = new();
     private readonly TextBox _name = new() { Left = 140, Top = 20, Width = 220 };

@@ -4,7 +4,7 @@ using BookReviewSystem.Models;
 namespace BookReviewSystem.Views;
 
 /// <summary>Book details page: information, average rating, reviews, and reader actions.</summary>
-public class BookDetailsForm : Form
+public class BookDetailsForm : BaseForm
 {
     private readonly BookController _books = new();
     private readonly ReviewController _reviews = new();

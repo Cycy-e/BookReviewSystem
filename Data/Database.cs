@@ -16,7 +16,7 @@ public static class Database
     // It matches the Docker command from the README. You can also override it without
     // editing code by setting the environment variable BOOKREVIEW_DB.
     private const string DefaultConnectionString =
-        "Host=localhost;Port=5432;Database=bookreviewdb;Username=bookreview;Password=BookReview@123";
+        "Host=localhost;Port=5432;Database=bookreviewdb;Username=postgres;Password=YOUR_PASSWORD";
 
     public static string ConnectionString { get; } =
         Environment.GetEnvironmentVariable("BOOKREVIEW_DB") ?? DefaultConnectionString;

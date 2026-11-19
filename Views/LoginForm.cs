@@ -30,13 +30,9 @@ public class LoginForm : BaseForm
         };
 
         var login = new Button { Text = "Log in", Left = 120, Top = 165, Width = 110, Height = 30 };
-        var guest = new Button { Text = "Continue as visitor", Left = 240, Top = 165, Width = 110, Height = 30 };
+        var guest = new Button { Text = "Continue as visitor", Left = 240, Top = 165, Width = 140, Height = 30 };
         var register = new LinkLabel { Text = "Create a new account", Left = 120, Top = 210, Width = 200 };
-        var adminNote = new Label
-        {
-            Text = $"Demo administrator: {Database.DefaultAdminEmail} / {Database.DefaultAdminPassword}",
-            Left = 20, Top = 250, Width = 360, ForeColor = Color.DimGray, Font = new Font(Font.FontFamily, 8)
-        };
+       
 
         login.Click += (_, _) => DoLogin();
         guest.Click += (_, _) => { Session.Clear(); DialogResult = DialogResult.OK; };
@@ -48,7 +44,7 @@ public class LoginForm : BaseForm
             title, hint,
             Ui.Label("Email", 20, 90), _email,
             Ui.Label("Password", 20, 125), _password,
-            login, guest, register, adminNote
+            login, guest, register
         });
     }
 

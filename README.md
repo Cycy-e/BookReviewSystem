@@ -1,22 +1,32 @@
 # Book Review and Management System (Lab 3)
 
-A Windows Forms desktop application (C#, .NET 8) with a SQLite database, built with the **MVC** pattern
+A Windows Forms desktop application (C#, .NET 8) with a PostgreSQL database, built with the **MVC** pattern
 from the Software Requirements Specification (FR-1 to FR-16, NFR-1 to NFR-6).
 
 **Author:** Uwera Cynthia Carmella (Student ID 27404), AUCA
 
 ## Requirements
 - Windows with the .NET 8 SDK (or Visual Studio 2022 with the ".NET desktop development" workload)
+- Docker Desktop (or any PostgreSQL 14+ server)
 
-## Run
+## 1. Start PostgreSQL (Docker)
+```
+docker run --name bookreview-db -e POSTGRES_USER=bookreview -e POSTGRES_PASSWORD=BookReview@123 -e POSTGRES_DB=bookreviewdb -p 5432:5432 -v bookreview-data:/var/lib/postgresql/data -d postgres:16
+```
+Next time just run `docker start bookreview-db`.
+
+Using your own PostgreSQL instead? Create a database, then change `DefaultConnectionString` in
+`Data/Database.cs` (or set the environment variable `BOOKREVIEW_DB`).
+
+## 2. Run
 ```
 dotnet restore
 dotnet run
 ```
 Or open `BookReviewSystem.csproj` in Visual Studio and press F5.
 
-The database file `bookreview.db` is created automatically next to the executable on first run, with a demo
-administrator and six sample books.
+On first run the app creates the tables (Users, Books, Ratings, Reviews) and adds a demo administrator and six
+sample books.
 
 | Role | Email | Password |
 |------|-------|----------|
@@ -29,7 +39,7 @@ administrator and six sample books.
 | Model | `Models/` | `User`, `Book`, `Review`, `OperationResult` |
 | View | `Views/` | WinForms windows: login, register, catalogue, book details, book edit, admin users, admin reviews |
 | Controller | `Controllers/` | `AuthController`, `BookController`, `ReviewController`, `AdminController`, `Session` - all validation, permissions and SQL |
-| Data | `Data/` | SQLite connection, schema, seed data, PBKDF2 password hashing |
+| Data | `Data/` | PostgreSQL (Npgsql) connection, schema, seed data, PBKDF2 password hashing |
 
 Views never talk to the database; they call controllers and show the returned `OperationResult` messages.
 
@@ -45,7 +55,7 @@ Views never talk to the database; they call controllers and show the returned `O
 | FR-13 / FR-14 Search, filter by category and minimum rating, sort | `BookController.Search`, `MainForm` |
 | FR-15 / FR-16 Admin reviews and users | `AdminReviewsForm`, `AdminUsersForm` |
 | NFR-3 Hashed passwords | `Data/PasswordHasher.cs` |
-| NFR-5 Data kept after restart | SQLite file database |
+| NFR-5 Data kept after restart | PostgreSQL database (Docker volume) |
 | NFR-6 Layered code | MVC folders above |
 
 ## Push to GitHub

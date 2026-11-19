@@ -13,14 +13,14 @@ public class AdminController
 
         using var conn = Database.Open();
         using var cmd = Database.Cmd(conn,
-            "SELECT Id, FullName, Email, Role, IsActive, CreatedAt FROM Users ORDER BY FullName COLLATE NOCASE");
+            "SELECT Id, FullName, Email, Role, IsActive, " + Database.Stamp("CreatedAt") + " FROM Users ORDER BY LOWER(FullName)");
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
             list.Add(new User
             {
                 Id = reader.GetInt32(0), FullName = reader.GetString(1), Email = reader.GetString(2),
-                Role = reader.GetString(3), IsActive = reader.GetInt32(4) == 1, CreatedAt = reader.GetString(5)
+                Role = reader.GetString(3), IsActive = reader.GetBoolean(4), CreatedAt = reader.GetString(5)
             });
         }
         return list;
@@ -34,7 +34,7 @@ public class AdminController
 
         using var conn = Database.Open();
         using var cmd = Database.Cmd(conn, "UPDATE Users SET IsActive = @a WHERE Id = @id",
-            ("@a", active ? 1 : 0), ("@id", userId));
+            ("@a", active), ("@id", userId));
         cmd.ExecuteNonQuery();
         return OperationResult.Ok(active ? "Account reactivated." : "Account deactivated.");
     }

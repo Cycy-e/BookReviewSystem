@@ -1,3 +1,4 @@
+using Npgsql;
 using BookReviewSystem.Data;
 using BookReviewSystem.Models;
 
@@ -8,13 +9,13 @@ public class ReviewController
 {
     public const int MaxReviewLength = 1000;
 
-    private const string ReviewSelect = @"
-        SELECT rv.Id, rv.UserId, rv.BookId, rv.Content, rv.CreatedAt, u.FullName, b.Title
+    private static readonly string ReviewSelect = @"
+        SELECT rv.Id, rv.UserId, rv.BookId, rv.Content, " + Database.Stamp("rv.CreatedAt") + @", u.FullName, b.Title
         FROM Reviews rv
         JOIN Users u ON u.Id = rv.UserId
         JOIN Books b ON b.Id = rv.BookId ";
 
-    private static Review Read(Microsoft.Data.Sqlite.SqliteDataReader r) => new()
+    private static Review Read(NpgsqlDataReader r) => new()
     {
         Id = r.GetInt32(0), UserId = r.GetInt32(1), BookId = r.GetInt32(2),
         Content = r.GetString(3), CreatedAt = r.GetString(4),
@@ -52,8 +53,8 @@ public class ReviewController
 
         using var conn = Database.Open();
         using var cmd = Database.Cmd(conn,
-            "INSERT INTO Reviews (UserId, BookId, Content, CreatedAt) VALUES (@u, @b, @c, @d)",
-            ("@u", Session.CurrentUser.Id), ("@b", bookId), ("@c", content.Trim()), ("@d", Database.Now()));
+            "INSERT INTO Reviews (UserId, BookId, Content) VALUES (@u, @b, @c)",
+            ("@u", Session.CurrentUser.Id), ("@b", bookId), ("@c", content.Trim()));
         cmd.ExecuteNonQuery();
         return OperationResult.Ok("Review posted.");
     }
@@ -115,7 +116,7 @@ public class ReviewController
         using var conn = Database.Open();
         using var cmd = Database.Cmd(conn,
             @"INSERT INTO Ratings (UserId, BookId, Stars) VALUES (@u, @b, @s)
-              ON CONFLICT (UserId, BookId) DO UPDATE SET Stars = excluded.Stars",
+              ON CONFLICT (UserId, BookId) DO UPDATE SET Stars = EXCLUDED.Stars",
             ("@u", Session.CurrentUser.Id), ("@b", bookId), ("@s", stars));
         cmd.ExecuteNonQuery();
         return OperationResult.Ok("Rating saved.");

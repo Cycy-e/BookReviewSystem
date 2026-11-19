@@ -23,16 +23,16 @@ public class AuthController
             return OperationResult.Fail("The password is too weak. Use at least 8 characters with letters and numbers.");
 
         using var conn = Database.Open();
-        using (var check = Database.Cmd(conn, "SELECT COUNT(*) FROM Users WHERE Email = @e", ("@e", email)))
+        using (var check = Database.Cmd(conn, "SELECT COUNT(*) FROM Users WHERE LOWER(Email) = LOWER(@e)", ("@e", email)))
         {
             if ((long)check.ExecuteScalar() > 0)
                 return OperationResult.Fail("An account with this email already exists.");
         }
 
         using var insert = Database.Cmd(conn,
-            "INSERT INTO Users (FullName, Email, PasswordHash, Role, IsActive, CreatedAt) VALUES (@n, @e, @p, @r, 1, @d)",
+            "INSERT INTO Users (FullName, Email, PasswordHash, Role) VALUES (@n, @e, @p, @r)",
             ("@n", fullName), ("@e", email), ("@p", PasswordHasher.Hash(password)),
-            ("@r", User.ReaderRole), ("@d", Database.Now()));
+            ("@r", User.ReaderRole));
         insert.ExecuteNonQuery();
         return OperationResult.Ok("Account created. You can now log in.");
     }
@@ -46,14 +46,14 @@ public class AuthController
 
         using var conn = Database.Open();
         using var cmd = Database.Cmd(conn,
-            "SELECT Id, FullName, Email, PasswordHash, Role, IsActive, CreatedAt FROM Users WHERE Email = @e", ("@e", email));
+            "SELECT Id, FullName, Email, PasswordHash, Role, IsActive, " + Database.Stamp("CreatedAt") + " FROM Users WHERE LOWER(Email) = LOWER(@e)", ("@e", email));
         using var reader = cmd.ExecuteReader();
 
         if (!reader.Read())
             return OperationResult.Fail("No account was found with that email address.");
         if (!PasswordHasher.Verify(password, reader.GetString(3)))
             return OperationResult.Fail("The password is incorrect.");
-        if (reader.GetInt32(5) == 0)
+        if (!reader.GetBoolean(5))
             return OperationResult.Fail("This account has been deactivated. Please contact an administrator.");
 
         Session.SignIn(new User

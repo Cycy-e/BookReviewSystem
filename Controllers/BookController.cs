@@ -1,3 +1,4 @@
+using Npgsql;
 using BookReviewSystem.Data;
 using BookReviewSystem.Models;
 
@@ -11,14 +12,14 @@ public class BookController
     public const string SortRating = "Average rating";
 
     private const string BookSelect = @"
-        SELECT b.Id, b.Title, b.Author, b.Category, b.Isbn, b.PublicationYear, IFNULL(b.Description, ''),
-               IFNULL(r.Avg, 0), IFNULL(r.Cnt, 0),
-               (SELECT COUNT(*) FROM Reviews rv WHERE rv.BookId = b.Id)
+        SELECT b.Id, b.Title, b.Author, b.Category, b.Isbn, b.PublicationYear, COALESCE(b.Description, ''),
+               COALESCE(r.Avg, 0), COALESCE(r.Cnt, 0),
+               (SELECT CAST(COUNT(*) AS integer) FROM Reviews rv WHERE rv.BookId = b.Id)
         FROM Books b
-        LEFT JOIN (SELECT BookId, AVG(Stars) AS Avg, COUNT(*) AS Cnt FROM Ratings GROUP BY BookId) r
+        LEFT JOIN (SELECT BookId, CAST(AVG(Stars) AS double precision) AS Avg, CAST(COUNT(*) AS integer) AS Cnt FROM Ratings GROUP BY BookId) r
                ON r.BookId = b.Id ";
 
-    private static Book Read(Microsoft.Data.Sqlite.SqliteDataReader r) => new()
+    private static Book Read(NpgsqlDataReader r) => new()
     {
         Id = r.GetInt32(0),
         Title = r.GetString(1),
@@ -39,14 +40,14 @@ public class BookController
         string orderBy = sortBy switch
         {
             SortYear => "b.PublicationYear DESC, b.Title",
-            SortRating => "IFNULL(r.Avg, 0) DESC, b.Title",
-            _ => "b.Title COLLATE NOCASE"
+            SortRating => "COALESCE(r.Avg, 0) DESC, b.Title",
+            _ => "LOWER(b.Title)"
         };
 
         string sql = BookSelect + @"
-            WHERE (@q = '' OR b.Title LIKE @like OR b.Author LIKE @like OR b.Category LIKE @like OR b.Isbn LIKE @like)
+            WHERE (@q = '' OR b.Title ILIKE @like OR b.Author ILIKE @like OR b.Category ILIKE @like OR b.Isbn ILIKE @like)
               AND (@cat = '' OR b.Category = @cat)
-              AND IFNULL(r.Avg, 0) >= @min
+              AND COALESCE(r.Avg, 0) >= @min
             ORDER BY " + orderBy;
 
         var list = new List<Book>();
@@ -63,7 +64,7 @@ public class BookController
     {
         var list = new List<string>();
         using var conn = Database.Open();
-        using var cmd = Database.Cmd(conn, "SELECT DISTINCT Category FROM Books ORDER BY Category COLLATE NOCASE");
+        using var cmd = Database.Cmd(conn, "SELECT Category FROM Books GROUP BY Category ORDER BY LOWER(Category)");
         using var reader = cmd.ExecuteReader();
         while (reader.Read()) list.Add(reader.GetString(0));
         return list;
@@ -135,7 +136,7 @@ public class BookController
         return null;
     }
 
-    private static bool IsbnExists(Microsoft.Data.Sqlite.SqliteConnection conn, string isbn, int exceptId)
+    private static bool IsbnExists(NpgsqlConnection conn, string isbn, int exceptId)
     {
         using var cmd = Database.Cmd(conn, "SELECT COUNT(*) FROM Books WHERE Isbn = @i AND Id <> @id",
             ("@i", isbn.Trim()), ("@id", exceptId));

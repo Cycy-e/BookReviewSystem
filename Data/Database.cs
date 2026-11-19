@@ -1,10 +1,10 @@
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using BookReviewSystem.Models;
 
 namespace BookReviewSystem.Data;
 
 /// <summary>
-/// SQLite database access: creates the schema on first run, seeds an administrator
+/// PostgreSQL access: creates the schema on first run, seeds an administrator
 /// and a few sample books, and hands out open connections.
 /// </summary>
 public static class Database
@@ -12,29 +12,33 @@ public static class Database
     public const string DefaultAdminEmail = "admin@bookreview.com";
     public const string DefaultAdminPassword = "Admin@123";
 
-    public static string DbPath { get; } = Path.Combine(AppContext.BaseDirectory, "bookreview.db");
+    // >>> Change this if your PostgreSQL uses different details. <<<
+    // It matches the Docker command from the README. You can also override it without
+    // editing code by setting the environment variable BOOKREVIEW_DB.
+    private const string DefaultConnectionString =
+        "Host=localhost;Port=5432;Database=bookreviewdb;Username=bookreview;Password=BookReview@123";
 
-    public static SqliteConnection Open()
+    public static string ConnectionString { get; } =
+        Environment.GetEnvironmentVariable("BOOKREVIEW_DB") ?? DefaultConnectionString;
+
+    public static NpgsqlConnection Open()
     {
-        var conn = new SqliteConnection($"Data Source={DbPath}");
+        var conn = new NpgsqlConnection(ConnectionString);
         conn.Open();
-        using var pragma = conn.CreateCommand();
-        pragma.CommandText = "PRAGMA foreign_keys = ON;";
-        pragma.ExecuteNonQuery();
         return conn;
     }
 
     /// <summary>Builds a command with named parameters.</summary>
-    public static SqliteCommand Cmd(SqliteConnection conn, string sql, params (string Name, object Value)[] args)
+    public static NpgsqlCommand Cmd(NpgsqlConnection conn, string sql, params (string Name, object Value)[] args)
     {
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
+        var cmd = new NpgsqlCommand(sql, conn);
         foreach (var (name, value) in args)
             cmd.Parameters.AddWithValue(name, value ?? DBNull.Value);
         return cmd;
     }
 
-    public static string Now() => DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    /// <summary>SQL fragment that returns a timestamp column as readable text.</summary>
+    public static string Stamp(string column) => $"to_char({column}, 'YYYY-MM-DD HH24:MI:SS')";
 
     public static void Initialize()
     {
@@ -42,51 +46,55 @@ public static class Database
 
         const string schema = @"
             CREATE TABLE IF NOT EXISTS Users (
-                Id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                FullName     TEXT NOT NULL,
-                Email        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                Id           SERIAL PRIMARY KEY,
+                FullName     VARCHAR(150) NOT NULL,
+                Email        VARCHAR(255) NOT NULL,
                 PasswordHash TEXT NOT NULL,
-                Role         TEXT NOT NULL CHECK (Role IN ('Reader','Administrator')),
-                IsActive     INTEGER NOT NULL DEFAULT 1,
-                CreatedAt    TEXT NOT NULL
+                Role         VARCHAR(20) NOT NULL CHECK (Role IN ('Reader','Administrator')),
+                IsActive     BOOLEAN NOT NULL DEFAULT TRUE,
+                CreatedAt    TIMESTAMP NOT NULL DEFAULT NOW()
             );
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email ON Users (LOWER(Email));
+
             CREATE TABLE IF NOT EXISTS Books (
-                Id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                Title           TEXT NOT NULL,
-                Author          TEXT NOT NULL,
-                Category        TEXT NOT NULL,
-                Isbn            TEXT NOT NULL UNIQUE,
+                Id              SERIAL PRIMARY KEY,
+                Title           VARCHAR(255) NOT NULL,
+                Author          VARCHAR(255) NOT NULL,
+                Category        VARCHAR(100) NOT NULL,
+                Isbn            VARCHAR(30)  NOT NULL UNIQUE,
                 PublicationYear INTEGER NOT NULL,
                 Description     TEXT
             );
+
             CREATE TABLE IF NOT EXISTS Ratings (
-                Id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                Id     SERIAL PRIMARY KEY,
                 UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
                 BookId INTEGER NOT NULL REFERENCES Books(Id) ON DELETE CASCADE,
                 Stars  INTEGER NOT NULL CHECK (Stars BETWEEN 1 AND 5),
                 UNIQUE (UserId, BookId)
             );
+
             CREATE TABLE IF NOT EXISTS Reviews (
-                Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                Id        SERIAL PRIMARY KEY,
                 UserId    INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
                 BookId    INTEGER NOT NULL REFERENCES Books(Id) ON DELETE CASCADE,
                 Content   TEXT NOT NULL,
-                CreatedAt TEXT NOT NULL
+                CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
             );";
         using (var cmd = Cmd(conn, schema)) cmd.ExecuteNonQuery();
 
         Seed(conn);
     }
 
-    private static void Seed(Microsoft.Data.Sqlite.SqliteConnection conn)
+    private static void Seed(NpgsqlConnection conn)
     {
         long users = (long)Cmd(conn, "SELECT COUNT(*) FROM Users").ExecuteScalar();
         if (users == 0)
         {
             using var cmd = Cmd(conn,
-                "INSERT INTO Users (FullName, Email, PasswordHash, Role, IsActive, CreatedAt) VALUES (@n, @e, @p, @r, 1, @d)",
+                "INSERT INTO Users (FullName, Email, PasswordHash, Role) VALUES (@n, @e, @p, @r)",
                 ("@n", "System Administrator"), ("@e", DefaultAdminEmail),
-                ("@p", PasswordHasher.Hash(DefaultAdminPassword)), ("@r", User.AdminRole), ("@d", Now()));
+                ("@p", PasswordHasher.Hash(DefaultAdminPassword)), ("@r", User.AdminRole));
             cmd.ExecuteNonQuery();
         }
 

@@ -61,7 +61,7 @@ Views never talk to the database; they call controllers and show the returned `O
 ## Push to GitHub
 ```
 git add .
-git commit -m "Lab 3: Book Review and Management System (WinForms, MVC, SQLite)"
+git commit -m "Lab 3: Book Review and Management System (WinForms, MVC, PostgreSQL)"
 git branch -M main
 git remote add origin https://github.com/<your-username>/BookReviewSystem.git
 git push -u origin main
